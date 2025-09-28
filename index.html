@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/7.8.1/rxjs.umd.min.js" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            height: 100vh;
+            background-color: black;
+            position: relative;
+        }
+
+        #lastMessage {
+            font-family: Arial, sans-serif;
+            font-size: 450px;
+            white-space: nowrap;
+            animation: marquee 10s linear infinite;
+            color: red;
+            position: absolute;
+            z-index: 1;
+        }
+
+        @keyframes marquee {
+            from {
+                transform: translateX(100%);
+            }
+            to {
+                transform: translateX(-100%);
+            }
+        }
+
+        #circleOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, 30px);
+            grid-template-rows: repeat(auto-fill, 30px);
+            pointer-events: none;
+            z-index: 2;
+        }
+        
+
+
+    </style>
+</head>
+<body>
+    <div id="lastMessage">Esperando mensaje...</div>
+    <div id="circleOverlay"></div>
+    <script>
+        const { timer } = rxjs;
+        const { ajax } = rxjs.ajax;
+        const { switchMap } = rxjs.operators;
+
+        const TELEGRAM_TOKEN = '7253741625:AAE0arufwl8b4L93lTQa-l1gmuQbEBskBnA';
+        const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/getUpdates`;
+
+        let lastUpdateId = 0;
+        const lastMessageDiv = document.getElementById('lastMessage');
+        const circleOverlay = document.getElementById('circleOverlay');
+
+        const setMarqueeAnimation = () => {
+            const textWidth = lastMessageDiv.offsetWidth;
+            const screenWidth = window.innerWidth;
+            const totalDistance = textWidth + screenWidth;
+            const speed = 200; // Velocidad en píxeles por segundo
+            const duration = totalDistance / speed;
+
+            lastMessageDiv.style.animation = `marquee ${duration}s linear infinite`;
+        };
+
+        const source$ = timer(0, 5000).pipe(
+            switchMap(() => 
+                ajax.getJSON(`${TELEGRAM_API_URL}?offset=${lastUpdateId + 1}`)
+            )
+        );
+
+        source$.subscribe({
+            next: (response) => {
+                if (response.result && response.result.length > 0) {
+                    response.result.forEach(update => {
+                        const messageText = update.message?.text || 'Mensaje vacío';
+                        lastMessageDiv.textContent = messageText;
+                        lastUpdateId = update.update_id;
+                        setMarqueeAnimation();
+                    });
+                }
+            },
+            error: (err) => {
+                console.error('Error en la petición:', err);
+                lastMessageDiv.textContent = 'Error al obtener mensajes';
+                setMarqueeAnimation();
+            }
+        });
+
+        window.addEventListener('resize', setMarqueeAnimation);
+        setMarqueeAnimation();
+
+        // Crear la matriz de círculos
+        const createCircles = () => {
+            circleOverlay.innerHTML = ''; // Limpiar círculos existentes
+            const columns = Math.ceil(window.innerWidth / 30);
+            const rows = Math.ceil(window.innerHeight / 30);
+
+            for (let i = 0; i < rows * columns; i++) {
+                const svgNS = "http://www.w3.org/2000/svg";
+
+                // Crear el SVG
+                const svg = document.createElementNS(svgNS, "svg");
+                svg.setAttribute("width", "31");
+                svg.setAttribute("height", "31");
+                svg.setAttribute("viewBox", "0 0 30 30");
+
+                // Crear la máscara
+                const mask = document.createElementNS(svgNS, "mask");
+                mask.setAttribute("id", `hole${i}`); // ID único para cada SVG
+                const rectMask = document.createElementNS(svgNS, "rect");
+                rectMask.setAttribute("width", "30");
+                rectMask.setAttribute("height", "30");
+                rectMask.setAttribute("fill", "white");
+                const circleMask = document.createElementNS(svgNS, "circle");
+                circleMask.setAttribute("cx", "15");
+                circleMask.setAttribute("cy", "15");
+                circleMask.setAttribute("r", "12.5");
+                circleMask.setAttribute("fill", "black");
+
+                mask.appendChild(rectMask);
+                mask.appendChild(circleMask);
+                svg.appendChild(mask);
+
+                // Crear el rectángulo negro con la máscara
+                const rect = document.createElementNS(svgNS, "rect");
+                rect.setAttribute("width", "30");
+                rect.setAttribute("height", "30");
+                rect.setAttribute("fill", "black");
+                rect.setAttribute("mask", `url(#hole${i})`);
+                svg.appendChild(rect);
+
+                circleOverlay.appendChild(svg);
+            }
+
+        };
+
+        window.addEventListener('resize', createCircles);
+        createCircles();
+    </script>
+</body>
+</html>
