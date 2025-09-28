@@ -78,7 +78,7 @@
             lastMessageDiv.style.animation = `marquee ${duration}s linear infinite`;
         };
 
-        const source$ = timer(0, 5000).pipe(
+        const source$ = timer(0, 1000).pipe(
             switchMap(() => 
                 ajax.getJSON(`${TELEGRAM_API_URL}?offset=${lastUpdateId + 1}`)
             )
