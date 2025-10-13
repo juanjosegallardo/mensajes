@@ -21,6 +21,7 @@
             font-family: Arial, sans-serif;
             font-size: 450px;
             white-space: nowrap;
+            animation: marquee 10s linear infinite;
             color: yellow;
             position: absolute;
             z-index: 1;
@@ -68,7 +69,13 @@
         const circleOverlay = document.getElementById('circleOverlay');
 
         const setMarqueeAnimation = () => {
+            const textWidth = lastMessageDiv.offsetWidth;
+            const screenWidth = window.innerWidth;
+            const totalDistance = textWidth + screenWidth;
+            const speed = 400; // Velocidad en píxeles por segundo
+            const duration = totalDistance / speed;
 
+            lastMessageDiv.style.animation = `marquee ${duration}s linear infinite`;
         };
 
         const source$ = timer(0, 1000).pipe(
